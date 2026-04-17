@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  // Menggunakan fullName sebagai pengganti email di form login
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -17,35 +18,47 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMsg("");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setErrorMsg("Email atau password salah.");
-      setLoading(false);
-    } else {
-      // AMBIL ROLE LANGSUNG SETELAH LOGIN
-      const { data: profile } = await supabase
+    try {
+      // 1. CARI EMAIL & ROLE BERDASARKAN NAMA LENGKAP
+      // Kita mencari ke tabel profiles terlebih dahulu
+      const { data: userData, error: userError } = await supabase
         .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
+        .select("email, role")
+        .eq("full_name", fullName)
         .single();
 
-      if (profile?.role === "admin") {
+      if (userError || !userData) {
+        throw new Error("Nama lengkap tidak ditemukan.");
+      }
+
+      // 2. LOGIN MENGGUNAKAN EMAIL YANG DITEMUKAN & PASSWORD
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password: password,
+      });
+
+      if (authError) {
+        throw new Error("Password salah.");
+      }
+
+      // 3. REDIRECT BERDASARKAN ROLE
+      // Menggunakan data role yang sudah diambil di langkah 1 (lebih efisien)
+      if (userData.role === "admin") {
         router.push("/dashboard/admin/pembayaran");
       } else {
         router.push("/dashboard/staff/pembayaran");
       }
 
       router.refresh();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Terjadi kesalahan saat login.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-6">
-      {/* Container Utama */}
       <div className="w-full max-w-[400px] space-y-6">
         {/* Logo & Judul */}
         <div className="text-center space-y-2">
@@ -70,14 +83,14 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 ml-1">
-                Email Address
+                Nama Lengkap
               </label>
               <input
-                type="email"
-                placeholder="admin@sekolah.com"
+                type="text"
+                placeholder="Contoh: Naufal Azra"
                 className="w-full bg-slate-50 border-slate-200 rounded-xl p-3.5 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 required
               />
             </div>
