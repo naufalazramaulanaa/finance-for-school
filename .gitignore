@@ -23,6 +23,9 @@
 # misc
 .DS_Store
 *.pem
+.temp
+.cache
+*.local
 
 # debug
 npm-debug.log*
@@ -39,3 +42,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Supabase local development (jika kamu pakai CLI nantinya)
+/supabase/.temp
+/supabase/pull
